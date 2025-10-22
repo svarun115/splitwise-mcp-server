@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "splitwise": {
+      "command": "node",
+      "args": [
+        "C:\\Users\\vasashid\\AI Projects\\SplitwiseMCPServer\\dist\\index.js"
+      ],
+      "env": {
+        "SPLITWISE_ACCESS_TOKEN": "WrLj1XTGH5PGblvuY9rxVGTiwSpvn4xuTHqVeYx5"
+      }
+    }
+  }
+}

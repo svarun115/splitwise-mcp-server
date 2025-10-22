@@ -1,0 +1,35 @@
+{
+  "name": "splitwise-mcp-server",
+  "version": "1.0.0",
+  "description": "A comprehensive Model Context Protocol server for managing Splitwise accounts",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "splitwise-mcp-server": "dist/index.js",
+    "splitwise-get-token": "dist/get-token.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "dev": "tsc && node dist/index.js",
+    "get-token": "tsc && node dist/get-token.js",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "splitwise",
+    "expense-tracking",
+    "model-context-protocol"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.1",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  }
+}
