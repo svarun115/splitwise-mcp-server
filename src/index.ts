@@ -174,7 +174,22 @@ async function handleWebSocketConnection(ws: WebSocket) {
 
           try {
             const client = getClient();
-            result = await handleToolCall(name, args || {}, client);
+            const raw = await handleToolCall(name, args || {}, client);
+            // Normalize to MCP tool response shape: { content: [ ... ] }
+            // Use type 'text' + JSON string for broader client compatibility (matches stdio handler)
+            if (raw && typeof raw === 'object' && Array.isArray((raw as any).content)) {
+              // Already in MCP form
+              result = raw;
+            } else {
+              result = {
+                content: [
+                  {
+                    type: 'text',
+                    text: JSON.stringify(raw, null, 2),
+                  },
+                ],
+              };
+            }
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             let code = -32603; // Internal error

@@ -157,8 +157,8 @@ app.post('/rpc', async (req: Request, res: Response) => {
       if (responded) return;
       responded = true;
       try {
-        const response = JSON.parse(data.toString());
-        console.error('[ADAPTER] RPC response:', JSON.stringify(response).substring(0, 100));
+        const response = JSON.parse(data);
+        console.error('[ADAPTER] RPC response:', JSON.stringify(response));
         res.json(response);
       } catch (error) {
         res.status(500).json({ error: 'Invalid response from backend' });
@@ -209,8 +209,8 @@ app.post('/', async (req: Request, res: Response) => {
       if (responded) return;
       responded = true;
       try {
-        const response = JSON.parse(data.toString());
-        console.error('[ADAPTER] Received response from backend:', data.toString().substring(0, 100));
+        const response = JSON.parse(data);
+        console.error('[ADAPTER] Received response from backend:', JSON.stringify(response));
         res.json(response);
       } catch (error) {
         res.status(500).json({ error: 'Invalid response from backend' });
@@ -264,13 +264,13 @@ httpServer.on('upgrade', (request, socket, head) => {
       
       // Proxy messages from client to backend
       clientWs.on('message', (msg: any) => {
-        console.error('[ADAPTER] Client -> Backend:', msg.toString().substring(0, 100));
+        console.error('[ADAPTER] Client -> Backend:', JSON.stringify(JSON.parse(msg)));
         backendWs.send(msg);
       });
 
       // Proxy messages from backend to client
       backendWs.on('message', (msg: any) => {
-        console.error('[ADAPTER] Backend -> Client:', msg.toString().substring(0, 100));
+        console.error('[ADAPTER] Backend -> Client:', JSON.stringify(JSON.parse(msg)));
         if (clientWs.readyState === 1) { // OPEN
           clientWs.send(msg);
         }
