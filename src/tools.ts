@@ -607,14 +607,248 @@ export function getUtilityTools(): Tool[] {
 }
 
 export function getAllTools(): Tool[] {
+  // Only expose these 9 tools (implementations for others are retained in handleToolCall)
   return [
-    ...getUserTools(),
-    ...getGroupTools(),
-    ...getFriendTools(),
-    ...getExpenseTools(),
-    ...getCommentTools(),
-    ...getNotificationTools(),
-    ...getUtilityTools(),
+    // Group tools
+    {
+      name: 'splitwise_get_groups',
+      description: 'List all groups for the current user. Groups represent collections of users who share expenses together (e.g., household, trip, etc.).',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+      },
+    },
+    {
+      name: 'splitwise_get_group',
+      description: 'Get detailed information about a specific group, including members, balances, and settings.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'number',
+            description: 'The group ID',
+          },
+        },
+        required: ['id'],
+      },
+    },
+    // Expense tools
+    {
+      name: 'splitwise_get_expenses',
+      description: 'List expenses with optional filters. Can filter by group, friend, date range, or update time.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          group_id: {
+            type: 'number',
+            description: 'Filter by group ID',
+          },
+          friend_id: {
+            type: 'number',
+            description: 'Filter by friend user ID',
+          },
+          dated_after: {
+            type: 'string',
+            description: 'Filter expenses dated after this date (ISO 8601 format)',
+          },
+          dated_before: {
+            type: 'string',
+            description: 'Filter expenses dated before this date (ISO 8601 format)',
+          },
+          updated_after: {
+            type: 'string',
+            description: 'Filter expenses updated after this time (ISO 8601 format)',
+          },
+          updated_before: {
+            type: 'string',
+            description: 'Filter expenses updated before this time (ISO 8601 format)',
+          },
+          limit: {
+            type: 'number',
+            description: 'Maximum number of expenses to return (default: 20)',
+          },
+          offset: {
+            type: 'number',
+            description: 'Offset for pagination (default: 0)',
+          },
+        },
+      },
+    },
+    {
+      name: 'splitwise_get_expense',
+      description: 'Get detailed information about a specific expense, including all users involved and their shares.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'number',
+            description: 'The expense ID',
+          },
+        },
+        required: ['id'],
+      },
+    },
+    {
+      name: 'splitwise_create_expense',
+      description: 'Create a new expense. Can split equally among group members or specify custom shares for each user. For custom shares, provide users array with paid_share and owed_share for each user.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          cost: {
+            type: 'string',
+            description: 'Total cost as a decimal string (e.g., "25.00")',
+          },
+          description: {
+            type: 'string',
+            description: 'Short description of the expense',
+          },
+          details: {
+            type: 'string',
+            description: 'Additional notes about the expense',
+          },
+          date: {
+            type: 'string',
+            description: 'Date of expense (ISO 8601 format). Defaults to now.',
+          },
+          repeat_interval: {
+            type: 'string',
+            description: 'Repeat frequency',
+            enum: ['never', 'weekly', 'fortnightly', 'monthly', 'yearly'],
+          },
+          currency_code: {
+            type: 'string',
+            description: 'Currency code (e.g., "USD")',
+          },
+          category_id: {
+            type: 'number',
+            description: 'Category ID from get_categories',
+          },
+          group_id: {
+            type: 'number',
+            description: 'Group ID (0 for expenses outside a group)',
+          },
+          split_equally: {
+            type: 'boolean',
+            description: 'Whether to split equally among group members',
+          },
+          users: {
+            type: 'array',
+            description: 'Array of user share objects (required if not splitting equally). Each must have paid_share, owed_share, and either user_id or email/first_name/last_name',
+            items: {
+              type: 'object',
+              properties: {
+                user_id: { type: 'number' },
+                email: { type: 'string' },
+                first_name: { type: 'string' },
+                last_name: { type: 'string' },
+                paid_share: { type: 'string', description: 'Amount this user paid' },
+                owed_share: { type: 'string', description: 'Amount this user owes' },
+              },
+            },
+          },
+        },
+        required: ['cost', 'description'],
+      },
+    },
+    {
+      name: 'splitwise_update_expense',
+      description: 'Update an existing expense. Only include fields that are changing. If users array is provided, all shares will be overwritten.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'number',
+            description: 'The expense ID to update',
+          },
+          cost: {
+            type: 'string',
+            description: 'Total cost as a decimal string',
+          },
+          description: {
+            type: 'string',
+            description: 'Short description of the expense',
+          },
+          details: {
+            type: 'string',
+            description: 'Additional notes about the expense',
+          },
+          date: {
+            type: 'string',
+            description: 'Date of expense (ISO 8601 format)',
+          },
+          repeat_interval: {
+            type: 'string',
+            description: 'Repeat frequency',
+            enum: ['never', 'weekly', 'fortnightly', 'monthly', 'yearly'],
+          },
+          currency_code: {
+            type: 'string',
+            description: 'Currency code',
+          },
+          category_id: {
+            type: 'number',
+            description: 'Category ID',
+          },
+          group_id: {
+            type: 'number',
+            description: 'Group ID',
+          },
+          users: {
+            type: 'array',
+            description: 'Array of user share objects to update. If provided, replaces all existing shares.',
+            items: {
+              type: 'object',
+              properties: {
+                user_id: { type: 'number' },
+                email: { type: 'string' },
+                first_name: { type: 'string' },
+                last_name: { type: 'string' },
+                paid_share: { type: 'string' },
+                owed_share: { type: 'string' },
+              },
+            },
+          },
+        },
+        required: ['id'],
+      },
+    },
+    {
+      name: 'splitwise_delete_expense',
+      description: 'Delete an expense permanently.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'number',
+            description: 'The expense ID to delete',
+          },
+        },
+        required: ['id'],
+      },
+    },
+    {
+      name: 'splitwise_restore_expense',
+      description: 'Restore a deleted expense.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'number',
+            description: 'The expense ID to restore',
+          },
+        },
+        required: ['id'],
+      },
+    },
+    // Utility tools
+    {
+      name: 'splitwise_get_categories',
+      description: 'Get a list of all expense categories supported by Splitwise. Use subcategory IDs when creating expenses.',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+      },
+    },
   ];
 }
 

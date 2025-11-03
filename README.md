@@ -15,10 +15,10 @@ A standalone Model Context Protocol (MCP) server that provides complete access t
 
 ## Supported Clients
 
-- ✅ **Claude Desktop** (Anthropic's desktop app)
+- ✅ **Claude Desktop** (Anthropic's desktop app) - Uses stdio or WebSocket modes
 - ✅ **VS Code with GitHub Copilot** (via [splitwise-mcp-vscode extension](https://github.com/svarun115/splitwise-mcp-vscode))
 - ✅ **ChatGPT** (with custom MCP integration)
-- ✅ **Any MCP-compatible client** (uses stdio transport)
+- ✅ **Any MCP-compatible client** (stdio or WebSocket+HTTP modes)
 
 ## Quick Start
 
@@ -72,11 +72,29 @@ Edit your Claude Desktop config file:
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 - **Mac/Linux**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
+**WebSocket mode** (requires the adapter or direct connection):
 ```json
 {
   "mcpServers": {
     "splitwise": {
       "command": "splitwise-mcp-server",
+      "args": [],
+      "env": {
+        "SPLITWISE_ACCESS_TOKEN": "your_access_token_here",
+        "PORT": "3002"
+      }
+    }
+  }
+}
+```
+
+**Stdio mode** (original, uses stdio transport):
+```json
+{
+  "mcpServers": {
+    "splitwise": {
+      "command": "splitwise-mcp-server",
+      "args": ["--stdio"],
       "env": {
         "SPLITWISE_ACCESS_TOKEN": "your_access_token_here"
       }
@@ -225,6 +243,48 @@ const tools = await client.listTools();
 
 For detailed setup instructions, see [SETUP.md](SETUP.md)
 
+## Server Modes
+
+The Splitwise MCP server supports multiple deployment modes:
+
+### WebSocket Mode (Default)
+```bash
+npm run dev:ws
+# or
+PORT=4001 npm start
+```
+- Starts on port 4001 (configurable via `PORT` env var)
+- Uses WebSocket + HTTP JSON-RPC protocol
+- Recommended for production deployments
+- Can be used with HTTP adapter for remote access
+
+### Stdio Mode
+```bash
+npm run dev:stdio
+# or
+npm start -- --stdio
+```
+- Uses standard input/output (classic MCP protocol)
+- Good for direct client integration
+- Default mode when `--stdio` flag is passed
+- Recommended for Claude Desktop
+
+### HTTP Adapter Mode
+```bash
+npm run dev:adapter
+# or in another terminal while WebSocket server is running:
+WS_BACKEND_URL=ws://localhost:4001 npm run adapter
+```
+- Runs on port 4000 (configurable via `PORT` env var)
+- Proxies HTTP/JSON-RPC requests to the WebSocket backend
+- Provides HTTP endpoints for testing:
+  - `GET /health` - Health check
+  - `GET /status` - Backend connection status
+  - `GET /listTools` - List available tools
+  - `POST /rpc` - JSON-RPC request endpoint
+  - `POST /` - Alternative JSON-RPC endpoint
+  - `WS /` - WebSocket upgrade endpoint
+
 ## Development
 
 ```bash
@@ -237,19 +297,52 @@ npm run build
 # Watch mode (auto-rebuild)
 npm run watch
 
-# Test server
-npm run dev
+# WebSocket mode (default)
+npm run dev:ws
+
+# Stdio mode
+npm run dev:stdio
+
+# HTTP Adapter mode (in separate terminal with backend running)
+npm run dev:adapter
 
 # Get OAuth token
 npm run get-token
 ```
+
+## Development & Running
+
+### Local Development
+```bash
+# Terminal 1: Start WebSocket backend
+PORT=4001 npm run build
+PORT=4001 npm run dev:ws
+
+# Terminal 2: (Optional) Start HTTP adapter
+PORT=4000 npm run dev:adapter
+
+# Terminal 3: Test the server
+curl http://localhost:4000/health
+curl http://localhost:4000/listTools
+```
+
+### With Claude Desktop (WebSocket)
+1. Configure as shown in "Option A: Claude Desktop" above
+2. Run the server: `PORT=4001 npm start`
+3. Restart Claude Desktop
+
+### With Claude Desktop (Stdio)
+1. Configure with `--stdio` flag as shown above
+2. Run the server: `npm start -- --stdio`
+3. Restart Claude Desktop
 
 ## Project Structure
 
 ```
 SplitwiseMCPServer/
 ├── src/
-│   ├── index.ts              # Main MCP server
+│   ├── index.ts              # Main MCP server (WebSocket + Stdio modes)
+│   ├── http-adapter.ts       # HTTP adapter for WebSocket backend
 │   ├── splitwise-client.ts   # Splitwise API wrapper
 │   ├── tools.ts              # Tool definitions (26 tools)
 │   └── get-token.ts          # OAuth helper script
