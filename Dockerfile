@@ -5,13 +5,13 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install deps and build
+# Install all deps (including devDeps for TypeScript build), then prune
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts
+RUN npm ci --ignore-scripts
 
 COPY tsconfig.json ./
 COPY src/ ./src/
-RUN npm run build
+RUN npm run build && npm prune --omit=dev
 
 EXPOSE 4000
 
