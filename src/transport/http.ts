@@ -11,21 +11,18 @@
 import express, { Request, Response, Express } from 'express';
 import { isValidJsonRpc, isNotification, createSuccessResponse, createErrorResponse, JsonRpcError, validateMcpProtocolVersion } from '../utils/jsonrpc.js';
 import { getAllTools, handleToolCall } from '../tools.js';
-import { SplitwiseClient } from '../splitwise-client.js';
-
-let splitwiseClient: SplitwiseClient | null = null;
-
-function getClient(): SplitwiseClient {
-  if (!splitwiseClient) {
-    splitwiseClient = new SplitwiseClient();
-  }
-  return splitwiseClient;
-}
+import { getClient } from '../client-registry.js';
 
 /**
  * Handle a single MCP JSON-RPC request.
+ *
+ * userId comes from the gateway-resolved X-User-Id header on the underlying
+ * HTTP request (see createHttpServer's POST /mcp handler) -- undefined for
+ * any caller that didn't come through that path, which getClient treats as
+ * the single pre-multi-user default identity, not a shared fallback for a
+ * named user.
  */
-async function handleMcpRequest(requestData: any): Promise<any> {
+async function handleMcpRequest(requestData: any, userId?: string): Promise<any> {
   const method = requestData.method;
   const params = requestData.params || {};
   const requestId = requestData.id;
@@ -63,7 +60,7 @@ async function handleMcpRequest(requestData: any): Promise<any> {
       }
 
       try {
-        const client = getClient();
+        const client = getClient(userId);
         const raw = await handleToolCall(toolName, toolArgs, client);
 
         // Normalize to MCP tool response shape
@@ -108,6 +105,12 @@ export function createHttpServer(port: number = 4000): Express {
 
   // POST /mcp - Main MCP endpoint
   app.post('/mcp', async (req: Request, res: Response) => {
+    // Gateway forwards the resolved caller identity as X-User-Id. Express
+    // gives each request its own req object -- no shared/global state to
+    // leak between concurrent requests the way a naive module-level
+    // variable would.
+    const userId = req.get('X-User-Id') || undefined;
+
     const mcpProtocolVersion = req.get('MCP-Protocol-Version');
 
     if (mcpProtocolVersion && !validateMcpProtocolVersion(mcpProtocolVersion)) {
@@ -129,13 +132,13 @@ export function createHttpServer(port: number = 4000): Express {
     }
 
     if (isNotification(body)) {
-      handleMcpRequest(body).catch((error) => {
+      handleMcpRequest(body, userId).catch((error) => {
         console.error('[DEBUG] Error handling notification:', error);
       });
       return res.status(202).send();
     }
 
-    const response = await handleMcpRequest(body);
+    const response = await handleMcpRequest(body, userId);
 
     if (!response) {
       return res.status(202).send();

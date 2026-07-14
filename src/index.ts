@@ -8,26 +8,8 @@ import {
   ErrorCode,
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
-import { SplitwiseClient } from './splitwise-client.js';
 import { getAllTools, handleToolCall } from './tools.js';
-
-// Initialize the Splitwise client (lazily)
-let splitwiseClient: SplitwiseClient | null = null;
-
-function getClient(): SplitwiseClient {
-  if (!splitwiseClient) {
-    try {
-      splitwiseClient = new SplitwiseClient();
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new McpError(
-        ErrorCode.InvalidRequest,
-        `Failed to initialize Splitwise client: ${errorMessage}`
-      );
-    }
-  }
-  return splitwiseClient;
-}
+import { getClient } from './client-registry.js';
 
 // Create the MCP server
 const server = new Server(
