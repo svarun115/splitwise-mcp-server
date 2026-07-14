@@ -7,9 +7,12 @@ export class SplitwiseClient {
   private client: AxiosInstance;
   private accessToken: string;
 
-  constructor() {
+  constructor(accessToken?: string) {
     const apiBaseUrl = process.env.SPLITWISE_API_BASE_URL || 'https://secure.splitwise.com/api/v3.0';
-    this.accessToken = process.env.SPLITWISE_ACCESS_TOKEN || '';
+    // An explicit token (per-user) wins; falling through to the plain env var
+    // preserves the original single-user behavior unchanged when no token is
+    // passed at all (stdio mode, or any caller with no resolved identity).
+    this.accessToken = accessToken || process.env.SPLITWISE_ACCESS_TOKEN || '';
 
     if (!this.accessToken) {
       throw new Error('SPLITWISE_ACCESS_TOKEN environment variable is required');
