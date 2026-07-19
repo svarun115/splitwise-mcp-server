@@ -102,6 +102,18 @@ SPLITWISE_ACCESS_TOKEN=your_access_token_here
 
 **Security**: Never commit `.env` to git. It's already in `.gitignore`.
 
+**Multi-user deployments (VM/gateway setup)**: this manual flow (Steps
+1-4) is now the *legacy/admin* path. As of #146, a household member's
+per-user token (`SPLITWISE_ACCESS_TOKEN_<USER>`, uppercased) can also be
+provisioned automatically via `mcp-auth-gateway`'s self-serve connect
+flow — see `imessage-bot`'s `SELF_SERVE_AUTH_PLAN.md`. When
+`SPLITWISE_TOKENS_DIR` is set, `client-registry.ts` checks
+`<dir>/<user_id>/token.json` (written by the gateway after real OAuth
+consent) *before* the env var, and re-checks it by file mtime on every
+call — so a token connected this way is picked up without restarting
+this server. The env var stays as the fallback for anyone provisioned
+the old way.
+
 ## Step 5: Test the Server
 
 ```bash
