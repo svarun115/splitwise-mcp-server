@@ -3,3 +3,6 @@ dist/
 .env
 *.log
 .DS_Store
+
+# Per-user OAuth credentials (file-backed tokens) -- never commit
+tokens/
