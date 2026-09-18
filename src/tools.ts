@@ -314,7 +314,7 @@ export function getExpenseTools(): Tool[] {
           },
           friend_id: {
             type: 'number',
-            description: 'Filter by friend user ID',
+            description: "Filter by friend user ID. Omit entirely to not filter by friend -- do NOT pass 0, which is not a user and makes the whole request fail as a permission error.",
           },
           dated_after: {
             type: 'string',
@@ -645,7 +645,7 @@ export function getAllTools(): Tool[] {
           },
           friend_id: {
             type: 'number',
-            description: 'Filter by friend user ID',
+            description: "Filter by friend user ID. Omit entirely to not filter by friend -- do NOT pass 0, which is not a user and makes the whole request fail as a permission error.",
           },
           dated_after: {
             type: 'string',
@@ -863,6 +863,35 @@ export function flattenUsers(users: any[], prefix: string = 'users'): Record<str
   return flattened;
 }
 
+/**
+ * Drops filters the caller did not really mean.
+ *
+ * An LLM client fills in every optional field of a schema, typically with
+ * a zero or an empty string. Most of those are harmless, but `friend_id: 0`
+ * is not: Splitwise reads it as "the friend whose user id is 0", which no
+ * token can see, and answers `403 you do not have permission` for the whole
+ * request. The expense list then looks like a permissions problem with the
+ * account rather than one bad argument -- which is exactly how it was read
+ * for a day (2026-09-18: both household expense reconciliations reported
+ * they could not reach Splitwise at all, and fell back to guessing at which
+ * charges were shared).
+ *
+ * `group_id: 0` is deliberately kept: zero is Splitwise's own documented
+ * sentinel there, meaning "non-group expenses", and dropping it would
+ * silently widen the query instead of narrowing it.
+ */
+export function cleanExpenseFilters(args: Record<string, any> = {}): Record<string, any> {
+  const cleaned: Record<string, any> = {};
+  for (const [key, value] of Object.entries(args ?? {})) {
+    if (value === undefined || value === null) continue;
+    if (typeof value === 'string' && value.trim() === '') continue;
+    // No Splitwise user has id 0, so this can only be a filled-in default.
+    if (key === 'friend_id' && Number(value) === 0) continue;
+    cleaned[key] = value;
+  }
+  return cleaned;
+}
+
 export async function handleToolCall(
   name: string,
   args: any,
@@ -926,7 +955,7 @@ export async function handleToolCall(
 
       // Expense tools
       case 'splitwise_get_expenses':
-        return await client.getExpenses(args);
+        return await client.getExpenses(cleanExpenseFilters(args));
       
       case 'splitwise_get_expense':
         return await client.getExpense(args.id);
